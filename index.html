@@ -376,92 +376,73 @@
         console.log('🌐 Current location:', window.location.href);
         console.log('🤖 Telegram WebApp:', tg);
 
-        // Создаем демо-данные для демонстрации
-        function createDemoChats() {
-            console.log('🎭 Creating demo chats for demonstration...');
+        // API Base URL - для продакшена замените на ваш сервер
+        const API_BASE = 'http://localhost:8080'; // ← ЗАМЕНИТЕ НА ВАШ СЕРВЕР
 
-            chats = [
-                {
-                    id: 1,
-                    user_name: 'Алексей Иванов',
-                    last_message: 'Здравствуйте! Хочу забронировать столик на вечер',
-                    last_message_time: new Date(Date.now() - 300000).toISOString(),
-                    status: 'active',
-                    messages: [
-                        { sender: 'user', text: 'Здравствуйте! Хочу забронировать столик на вечер', time: new Date(Date.now() - 300000).toISOString() },
-                        { sender: 'admin', text: 'Здравствуйте! На какое время и сколько человек?', time: new Date(Date.now() - 240000).toISOString() },
-                        { sender: 'user', text: 'На 19:00, 4 человека пожалуйста', time: new Date(Date.now() - 180000).toISOString() }
-                    ]
-                },
-                {
-                    id: 2,
-                    user_name: 'Мария Петрова',
-                    last_message: 'Какой у вас средний чек?',
-                    last_message_time: new Date(Date.now() - 600000).toISOString(),
-                    status: 'active',
-                    messages: [
-                        { sender: 'user', text: 'Добрый день! Интересует меню доставки', time: new Date(Date.now() - 600000).toISOString() },
-                        { sender: 'admin', text: 'Здравствуйте! Наше меню включает пиццу, пасту, салаты и десерты.', time: new Date(Date.now() - 540000).toISOString() },
-                        { sender: 'user', text: 'Какой у вас средний чек?', time: new Date(Date.now() - 480000).toISOString() }
-                    ]
-                },
-                {
-                    id: 3,
-                    user_name: 'Дмитрий Сидоров',
-                    last_message: 'Спасибо за отличный вечер!',
-                    last_message_time: new Date(Date.now() - 1800000).toISOString(),
-                    status: 'completed',
-                    messages: [
-                        { sender: 'user', text: 'Спасибо за обслуживание! Все было очень вкусно', time: new Date(Date.now() - 1800000).toISOString() },
-                        { sender: 'admin', text: 'Спасибо за ваш отзыв! Рады что вам понравилось. Приходите еще!', time: new Date(Date.now() - 1740000).toISOString() },
-                        { sender: 'user', text: 'Спасибо за отличный вечер!', time: new Date(Date.now() - 1680000).toISOString() }
-                    ]
+        // Функция для выполнения API запросов
+        async function apiRequest(endpoint, options = {}) {
+            try {
+                const url = `${API_BASE}${endpoint}`;
+                console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
+
+                const response = await fetch(url, {
+                    method: options.method || 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    body: options.body ? JSON.stringify(options.body) : undefined
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-            ];
 
-            console.log('✅ Demo chats created:', chats.length);
-            return chats;
+                const data = await response.json();
+                console.log(`✅ API Response:`, data);
+                return data;
+
+            } catch (error) {
+                console.error(`❌ API Error:`, error);
+                throw error;
+            }
         }
 
         // Load statistics
         async function loadStats() {
             try {
-                console.log('📊 Loading stats (demo data)...');
+                console.log('📊 Loading stats from API...');
 
-                // Демо статистика
-                const stats = {
-                    total_chats: chats.length,
-                    active_chats: chats.filter(c => c.status === 'active').length,
-                    completed_chats: chats.filter(c => c.status === 'completed').length,
-                    avg_messages_per_chat: Math.round(chats.reduce((sum, chat) => sum + (chat.messages ? chat.messages.length : 0), 0) / Math.max(chats.length, 1))
-                };
+                const stats = await apiRequest('/api/stats');
 
-                console.log('📊 Stats calculated:', stats);
+                document.getElementById('total-chats').textContent = stats.total_chats || 0;
+                document.getElementById('active-chats').textContent = stats.active_chats || 0;
+                document.getElementById('completed-chats').textContent = stats.completed_chats || 0;
+                document.getElementById('avg-chat-time').textContent = stats.avg_messages_per_chat || 0;
 
-                document.getElementById('total-chats').textContent = stats.total_chats;
-                document.getElementById('active-chats').textContent = stats.active_chats;
-                document.getElementById('completed-chats').textContent = stats.completed_chats;
-                document.getElementById('avg-chat-time').textContent = stats.avg_messages_per_chat;
+                console.log('✅ Stats loaded:', stats);
 
             } catch (error) {
                 console.error('❌ Error loading stats:', error);
+                // Fallback to zeros
+                document.getElementById('total-chats').textContent = '0';
+                document.getElementById('active-chats').textContent = '0';
+                document.getElementById('completed-chats').textContent = '0';
+                document.getElementById('avg-chat-time').textContent = '0';
             }
         }
 
         // Load chat list
         async function loadChatList() {
             try {
-                console.log('📋 Loading chat list (demo data)...');
+                console.log('📋 Loading chat list from API...');
 
-                // Если чатов нет, создаем демо-данные
-                if (chats.length === 0) {
-                    chats = createDemoChats();
-                }
+                chats = await apiRequest('/api/chats');
 
                 const chatListDiv = document.getElementById('chat-list');
                 chatListDiv.innerHTML = '';
 
-                if (chats.length === 0) {
+                if (!chats || chats.length === 0) {
                     chatListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Нет активных чатов</div>';
                     return;
                 }
@@ -483,9 +464,12 @@
                     chatListDiv.appendChild(chatItem);
                 });
 
-                console.log('✅ Chat list loaded');
+                console.log('✅ Chat list loaded:', chats.length, 'chats');
             } catch (error) {
                 console.error('❌ Error loading chat list:', error);
+                // Fallback message
+                const chatListDiv = document.getElementById('chat-list');
+                chatListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Ошибка загрузки чатов</div>';
             }
         }
 
@@ -507,17 +491,16 @@
         // Load chat messages
         async function loadChatMessages(chatId) {
             try {
-                console.log('💬 Loading messages for chat:', chatId, '(demo data)');
+                console.log('💬 Loading messages for chat:', chatId, 'from API');
 
-                const chat = chats.find(c => c.id === chatId);
-                const messages = chat ? chat.messages || [] : [];
+                const messages = await apiRequest(`/api/chats/${chatId}`);
 
                 console.log('💬 Messages loaded:', messages);
 
                 const messagesDiv = document.getElementById('chat-messages');
                 messagesDiv.innerHTML = '';
 
-                if (messages.length === 0) {
+                if (!messages || messages.length === 0) {
                     messagesDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Нет сообщений в этом чате</div>';
                     return;
                 }
@@ -539,6 +522,8 @@
                 console.log('✅ Messages loaded for chat:', chatId);
             } catch (error) {
                 console.error('❌ Error loading messages:', error);
+                const messagesDiv = document.getElementById('chat-messages');
+                messagesDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Ошибка загрузки сообщений</div>';
             }
         }
 
@@ -560,16 +545,17 @@
             try {
                 console.log('⏸️ Pausing chat:', currentChatId);
 
-                // Имитация паузы чата (демо)
-                const chat = chats.find(c => c.id === currentChatId);
-                if (chat) {
-                    chat.status = 'paused';
-                    console.log('✅ Chat paused:', chat.user_name);
-                    alert(`Чат с ${chat.user_name} поставлен на паузу`);
+                const result = await apiRequest(`/api/chats/${currentChatId}/status`, {
+                    method: 'PUT',
+                    body: { status: 'paused' }
+                });
+
+                if (result.success) {
+                    console.log('✅ Chat paused');
+                    alert('Чат поставлен на паузу');
                     loadChatList();
                 } else {
-                    console.error('❌ Chat not found for pause:', currentChatId);
-                    alert('Чат не найден');
+                    throw new Error('Failed to pause chat');
                 }
             } catch (error) {
                 console.error('❌ Error pausing chat:', error);
@@ -584,16 +570,17 @@
             try {
                 console.log('▶️ Resuming chat:', currentChatId);
 
-                // Имитация продолжения чата (демо)
-                const chat = chats.find(c => c.id === currentChatId);
-                if (chat) {
-                    chat.status = 'active';
-                    console.log('✅ Chat resumed:', chat.user_name);
-                    alert(`Чат с ${chat.user_name} продолжен`);
+                const result = await apiRequest(`/api/chats/${currentChatId}/status`, {
+                    method: 'PUT',
+                    body: { status: 'active' }
+                });
+
+                if (result.success) {
+                    console.log('✅ Chat resumed');
+                    alert('Чат продолжен');
                     loadChatList();
                 } else {
-                    console.error('❌ Chat not found for resume:', currentChatId);
-                    alert('Чат не найден');
+                    throw new Error('Failed to resume chat');
                 }
             } catch (error) {
                 console.error('❌ Error resuming chat:', error);
@@ -607,23 +594,28 @@
             if (!message || !currentChatId) return;
 
             try {
-                // Отправляем данные через Telegram Web App API
-                const data = {
-                    action: 'send_admin_message',
-                    chatId: currentChatId,
-                    message: message
-                };
+                console.log('📤 Sending admin message to chat:', currentChatId);
 
-                tg.sendData(JSON.stringify(data));
+                const result = await apiRequest(`/api/chats/${currentChatId}/messages`, {
+                    method: 'POST',
+                    body: { message: message }
+                });
 
-                // Очищаем поле ввода
-                document.getElementById('admin-message').value = '';
+                if (result.success) {
+                    // Очищаем поле ввода
+                    document.getElementById('admin-message').value = '';
 
-                // Показываем сообщение об отправке
-                alert('Сообщение отправлено!');
+                    // Показываем сообщение об отправке
+                    alert('Сообщение отправлено!');
+
+                    // Обновляем сообщения
+                    await loadChatMessages(currentChatId);
+                } else {
+                    throw new Error('Failed to send message');
+                }
 
             } catch (error) {
-                console.error('Error sending message:', error);
+                console.error('❌ Error sending message:', error);
                 alert('Ошибка при отправке сообщения');
             }
         }
